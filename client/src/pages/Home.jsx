@@ -49,39 +49,44 @@ function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-500 via-cyan-400 to-emerald-300 px-4 py-10">
-      <div className="mx-auto flex min-h-[85vh] max-w-5xl items-center justify-center">
-        <div className="grid w-full gap-6 rounded-[2rem] border-4 border-slate-900 bg-white/90 p-6 shadow-[14px_14px_0px_0px_rgba(15,23,42,1)] md:grid-cols-[1.2fr_0.9fr] md:p-10">
-          <section className="space-y-5">
-            <p className="inline-flex rounded-full bg-slate-900 px-4 py-1 text-xs font-black uppercase tracking-[0.25em] text-white">
-              React + Socket.IO
+    <div className="relative min-h-screen overflow-hidden px-4 py-10">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,226,89,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(74,144,226,0.24),_transparent_24%)]" />
+      <div className="relative mx-auto flex min-h-[85vh] max-w-6xl items-center justify-center">
+        <div className="grid w-full gap-6 rounded-[2rem] border border-white/15 bg-white/10 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:grid-cols-[1.15fr_0.85fr] md:p-10">
+          <section className="space-y-6">
+            <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-black uppercase tracking-[0.28em] text-white/80">
+              Real-Time Card Game
             </p>
             <div className="space-y-3">
-              <h1 className="text-4xl font-black uppercase tracking-tight text-slate-900 md:text-6xl">
+              <h1 className="bg-gradient-to-r from-yellow-200 via-orange-300 to-rose-300 bg-clip-text text-5xl font-black tracking-tight text-transparent md:text-7xl">
                 Monopoly Deal
               </h1>
-              <p className="max-w-xl text-base font-semibold text-slate-700 md:text-lg">
-                Private rooms, real-time turns, reconnect support, and one to three merged decks for up to 18
-                players.
+              <p className="max-w-xl text-base font-medium text-white/75 md:text-lg">
+                Fast rooms, bright game screens, reconnect support, and deck scaling for tables up to 18 players.
               </p>
             </div>
 
-            <div className="grid gap-3 rounded-[1.5rem] bg-slate-900 p-5 text-sm font-semibold text-white sm:grid-cols-3">
+            <div className="grid gap-3 rounded-[1.6rem] border border-white/15 bg-white/10 p-4 text-white sm:grid-cols-3">
               <Stat label="Players" value="2-18" />
               <Stat label="Decks" value="1 / 2 / 3" />
-              <Stat label="Goal" value="3 Sets" />
+              <Stat label="Win" value="3 Sets" />
+            </div>
+
+            <div className="hidden rounded-[1.6rem] border border-white/10 bg-slate-950/30 p-5 text-sm font-medium text-white/70 md:block">
+              Same invite-room flow as the skribbl clone, but rebuilt for Monopoly Deal turns, payment prompts, and
+              crowded multiplayer tables on both desktop and mobile.
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] bg-amber-200 p-5 ring-4 ring-slate-900 md:p-6">
+          <section className="rounded-[1.8rem] border border-white/15 bg-slate-950/30 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.25)] md:p-6">
             <div className="space-y-4">
-              <h2 className="text-2xl font-black uppercase text-slate-900">Create Or Join</h2>
+              <h2 className="text-2xl font-black uppercase tracking-[0.08em] text-white">Create Or Join</h2>
               <label className="block space-y-2">
-                <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-800">Player Name</span>
+                <span className="text-sm font-bold uppercase tracking-[0.2em] text-white/65">Player Name</span>
                 <input
                   type="text"
-                  className="w-full rounded-2xl border-4 border-slate-900 bg-white px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:-translate-y-0.5"
-                  placeholder="Monopoly shark"
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-base font-semibold text-white outline-none placeholder:text-white/35 focus:border-sky-300 focus:bg-white/15"
+                  placeholder="Your nickname..."
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                 />
@@ -89,29 +94,29 @@ function Home() {
 
               <button
                 onClick={createRoom}
-                className="w-full rounded-2xl border-4 border-slate-900 bg-emerald-400 px-4 py-3 text-base font-black uppercase tracking-[0.15em] text-slate-900 transition hover:-translate-y-0.5"
+                className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-3 text-base font-black uppercase tracking-[0.16em] text-white shadow-[0_10px_30px_rgba(74,144,226,0.35)]"
               >
-                Create Private Room
+                Create Room
               </button>
 
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <input
                   type="text"
-                  className="w-full rounded-2xl border-4 border-slate-900 bg-white px-4 py-3 text-base font-semibold uppercase text-slate-900 outline-none"
-                  placeholder="Room ID"
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-base font-semibold uppercase text-white outline-none placeholder:text-white/35 focus:border-amber-300 focus:bg-white/15"
+                  placeholder="Enter room code..."
                   value={roomId}
                   onChange={(event) => setRoomId(event.target.value.toUpperCase())}
                 />
                 <button
                   onClick={joinRoom}
-                  className="rounded-2xl border-4 border-slate-900 bg-rose-300 px-6 py-3 text-base font-black uppercase tracking-[0.15em] text-slate-900 transition hover:-translate-y-0.5"
+                  className="rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-black uppercase tracking-[0.16em] text-slate-950 shadow-[0_10px_30px_rgba(245,166,35,0.35)]"
                 >
                   Join
                 </button>
               </div>
 
               {error ? (
-                <div className="rounded-2xl border-4 border-rose-900 bg-rose-100 px-4 py-3 text-sm font-bold text-rose-900">
+                <div className="rounded-2xl border border-rose-300/35 bg-rose-400/20 px-4 py-3 text-sm font-bold text-rose-100">
                   {error}
                 </div>
               ) : null}
@@ -125,9 +130,9 @@ function Home() {
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-2xl bg-white/10 p-3">
-      <div className="text-xs uppercase tracking-[0.25em] text-white/70">{label}</div>
-      <div className="mt-1 text-2xl font-black">{value}</div>
+    <div className="rounded-2xl border border-white/12 bg-white/8 p-3">
+      <div className="text-xs uppercase tracking-[0.25em] text-white/55">{label}</div>
+      <div className="mt-1 text-2xl font-black text-white">{value}</div>
     </div>
   );
 }

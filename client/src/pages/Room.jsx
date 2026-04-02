@@ -136,6 +136,8 @@ function Room() {
   const otherPlayers = roomState?.players?.filter((player) => player.id !== me?.id) || [];
   const jsnCards = roomState?.you?.hand?.filter((card) => card.actionType === 'justSayNo') || [];
   const paymentOptions = promptState?.options || [];
+  const glassPanelClass = 'rounded-[1.75rem] border border-white/15 bg-white/10 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur-2xl';
+  const inputClass = 'w-full rounded-2xl border border-white/15 bg-slate-950/35 px-3 py-3 font-semibold text-white outline-none transition placeholder:text-white/35 focus:border-sky-300 focus:bg-slate-950/50';
 
   useEffect(() => {
     if (!selectedCard) {
@@ -183,7 +185,7 @@ function Room() {
   function renderSelectedCardPanel() {
     if (!selectedCard) {
       return (
-        <div className="rounded-[1.5rem] border-4 border-dashed border-slate-300 bg-white/70 p-5 text-sm font-semibold text-slate-600">
+        <div className="rounded-[1.5rem] border border-dashed border-white/20 bg-slate-950/25 p-5 text-sm font-semibold text-white/60">
           Select a card from your hand to play it.
         </div>
       );
@@ -212,16 +214,16 @@ function Room() {
     const doubleRentCards = roomState?.you?.hand?.filter((card) => card.actionType === 'doubleRent') || [];
 
     return (
-      <div className="space-y-4 rounded-[1.5rem] border-4 border-slate-900 bg-white p-5 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
+      <div className="space-y-4 rounded-[1.75rem] border border-white/15 bg-white/10 p-5 shadow-[0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">Selected Card</div>
-            <h3 className="mt-1 text-2xl font-black text-slate-900">{selectedCard.name}</h3>
+            <div className="text-xs font-black uppercase tracking-[0.25em] text-white/45">Selected Card</div>
+            <h3 className="mt-1 text-2xl font-black text-white">{selectedCard.name}</h3>
           </div>
           {selectedCard.category !== 'property' ? (
             <button
               onClick={() => submitCommand('bank_card', { cardId: selectedCard.id })}
-              className="rounded-2xl border-4 border-slate-900 bg-emerald-300 px-4 py-2 text-sm font-black uppercase text-slate-900"
+              className="rounded-2xl bg-gradient-to-r from-emerald-400 to-lime-400 px-4 py-2 text-sm font-black uppercase text-slate-950 shadow-[0_10px_25px_rgba(126,211,33,0.28)]"
             >
               Bank It
             </button>
@@ -232,9 +234,9 @@ function Room() {
           <div className="grid gap-3 md:grid-cols-2">
             {selectedCard.colors.length > 1 ? (
               <label className="space-y-2">
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Color</span>
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-white/55">Color</span>
                 <select
-                  className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+                  className={inputClass}
                   value={actionDraft.assignedColor || ''}
                   onChange={(event) => setActionDraft((draft) => ({ ...draft, assignedColor: event.target.value }))}
                 >
@@ -248,9 +250,9 @@ function Room() {
             ) : null}
 
             <label className="space-y-2">
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Set</span>
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-white/55">Set</span>
               <select
-                className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+                className={inputClass}
                 value={actionDraft.targetSetId || ''}
                 onChange={(event) => setActionDraft((draft) => ({ ...draft, targetSetId: event.target.value }))}
               >
@@ -273,7 +275,7 @@ function Room() {
                   targetSetId: actionDraft.targetSetId || undefined,
                 })
               }
-              className="rounded-2xl border-4 border-slate-900 bg-amber-300 px-4 py-3 text-sm font-black uppercase text-slate-900 md:col-span-2"
+              className="rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 px-4 py-3 text-sm font-black uppercase text-slate-950 shadow-[0_10px_25px_rgba(245,166,35,0.3)] md:col-span-2"
             >
               Play Property
             </button>
@@ -295,7 +297,7 @@ function Room() {
         {selectedCard.actionType === 'house' || selectedCard.actionType === 'hotel' ? (
           <div className="grid gap-3 md:grid-cols-[1fr_auto]">
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.targetSetId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, targetSetId: event.target.value }))}
             >
@@ -332,7 +334,7 @@ function Room() {
               onChange={(targetPlayerId) => setActionDraft((draft) => ({ ...draft, targetPlayerId, targetCardId: '' }))}
             />
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.targetCardId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, targetCardId: event.target.value }))}
             >
@@ -365,7 +367,7 @@ function Room() {
               onChange={(targetPlayerId) => setActionDraft((draft) => ({ ...draft, targetPlayerId, targetCardId: '' }))}
             />
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.sourceCardId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, sourceCardId: event.target.value }))}
             >
@@ -377,7 +379,7 @@ function Room() {
               ))}
             </select>
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.targetCardId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, targetCardId: event.target.value }))}
             >
@@ -411,7 +413,7 @@ function Room() {
               onChange={(targetPlayerId) => setActionDraft((draft) => ({ ...draft, targetPlayerId, targetSetId: '' }))}
             />
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.targetSetId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, targetSetId: event.target.value }))}
             >
@@ -439,7 +441,7 @@ function Room() {
         {selectedCard.type === 'rent' ? (
           <div className="space-y-3">
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={actionDraft.targetSetId || ''}
               onChange={(event) => setActionDraft((draft) => ({ ...draft, targetSetId: event.target.value }))}
             >
@@ -460,11 +462,11 @@ function Room() {
             ) : null}
 
             {doubleRentCards.length ? (
-              <div className="rounded-2xl border-4 border-slate-900 bg-sky-100 p-3">
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Double The Rent</div>
+              <div className="rounded-2xl border border-white/15 bg-sky-400/15 p-3">
+                <div className="text-xs font-black uppercase tracking-[0.2em] text-white/55">Double The Rent</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {doubleRentCards.map((card) => (
-                    <label key={card.id} className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-bold">
+                    <label key={card.id} className="flex items-center gap-2 rounded-full border border-white/12 bg-slate-950/35 px-3 py-2 text-sm font-bold text-white">
                       <input
                         type="checkbox"
                         checked={(actionDraft.doubleRentIds || []).includes(card.id)}
@@ -500,7 +502,7 @@ function Room() {
         ) : null}
 
         {selectedCard.actionType === 'justSayNo' ? (
-          <div className="rounded-2xl bg-amber-100 px-4 py-3 text-sm font-bold text-slate-800">
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-400/15 px-4 py-3 text-sm font-bold text-amber-100">
             Just Say No is played only from prompts. Bank it if you want its money value on the table.
           </div>
         ) : null}
@@ -542,14 +544,14 @@ function Room() {
     }
 
     return (
-      <div className="rounded-[1.5rem] border-4 border-slate-900 bg-white p-5 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
-        <div className="mb-4 text-xl font-black text-slate-900">Rearrange Table</div>
+      <div className={glassPanelClass}>
+        <div className="mb-4 text-xl font-black text-white">Rearrange Table</div>
 
         {movableWilds.length ? (
           <div className="space-y-3">
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Move A Wild</div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/55">Move A Wild</div>
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={moveDraft.wildCardId || ''}
               onChange={(event) => {
                 const wild = movableWilds.find((entry) => entry.card.id === event.target.value);
@@ -572,7 +574,7 @@ function Room() {
             {moveDraft.wildCardId ? (
               <>
                 <select
-                  className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+                  className={inputClass}
                   value={moveDraft.wildColor || ''}
                   onChange={(event) => setMoveDraft((draft) => ({ ...draft, wildColor: event.target.value, wildTargetSetId: '' }))}
                 >
@@ -584,7 +586,7 @@ function Room() {
                 </select>
 
                 <select
-                  className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+                  className={inputClass}
                   value={moveDraft.wildTargetSetId || ''}
                   onChange={(event) => setMoveDraft((draft) => ({ ...draft, wildTargetSetId: event.target.value }))}
                 >
@@ -615,9 +617,9 @@ function Room() {
 
         {movableBuildings.length ? (
           <div className="mt-6 space-y-3">
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Move A Building</div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/55">Move A Building</div>
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={moveDraft.buildingCardId || ''}
               onChange={(event) => setMoveDraft((draft) => ({ ...draft, buildingCardId: event.target.value }))}
             >
@@ -629,7 +631,7 @@ function Room() {
               ))}
             </select>
             <select
-              className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+              className={inputClass}
               value={moveDraft.buildingTargetSetId || ''}
               onChange={(event) => setMoveDraft((draft) => ({ ...draft, buildingTargetSetId: event.target.value }))}
             >
@@ -659,14 +661,14 @@ function Room() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#cffafe,_#93c5fd_35%,_#fde68a_75%,_#fef3c7)] px-3 py-4 md:px-6">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,226,89,0.12),_transparent_20%),linear-gradient(135deg,_#1a1a2e_0%,_#16213e_45%,_#0f3460_100%)] px-3 py-4 md:px-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)] md:p-6">
+        <header className={`${glassPanelClass} md:p-6`}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">Private Room</div>
-              <h1 className="text-3xl font-black uppercase text-slate-900 md:text-4xl">{normalizedRoomId}</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-600">
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-white/45">Private Room</div>
+              <h1 className="bg-gradient-to-r from-yellow-200 via-orange-300 to-rose-300 bg-clip-text text-3xl font-black uppercase text-transparent md:text-4xl">{normalizedRoomId}</h1>
+              <p className="mt-1 text-sm font-semibold text-white/65">
                 Invite players with this room code. Reconnect is automatic on refresh.
               </p>
             </div>
@@ -680,13 +682,13 @@ function Room() {
         </header>
 
         {error ? (
-          <div className="rounded-[1.5rem] border-4 border-rose-900 bg-rose-100 px-4 py-3 text-sm font-bold text-rose-900">
+          <div className="rounded-[1.5rem] border border-rose-300/35 bg-rose-400/20 px-4 py-3 text-sm font-bold text-rose-100">
             {error}
           </div>
         ) : null}
 
         {!roomState ? (
-          <div className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-8 text-center text-lg font-bold text-slate-700 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+          <div className={`${glassPanelClass} p-8 text-center text-lg font-bold text-white/75`}>
             Connecting to room...
           </div>
         ) : null}
@@ -698,11 +700,11 @@ function Room() {
         {roomState?.phase !== 'lobby' && roomState ? (
           <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <section className="space-y-4">
-              <div className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+              <div className={glassPanelClass}>
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Table</div>
-                    <h2 className="text-2xl font-black text-slate-900">
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Table</div>
+                    <h2 className="text-2xl font-black text-white">
                       {roomState.phase === 'finished'
                         ? `${roomState.players.find((player) => player.id === roomState.winnerId)?.name || 'A player'} wins`
                         : isMyTurn
@@ -712,25 +714,25 @@ function Room() {
                   </div>
                   <button
                     onClick={leaveGame}
-                    className="rounded-2xl border-4 border-slate-900 bg-rose-200 px-4 py-2 text-sm font-black uppercase text-slate-900"
+                    className="rounded-2xl bg-gradient-to-r from-rose-300 to-red-400 px-4 py-2 text-sm font-black uppercase text-slate-950"
                   >
                     Leave
                   </button>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  <CenterCard title="Draw Pile" value={`${roomState.drawPileCount} cards`} tone="bg-sky-100" />
+                  <CenterCard title="Draw Pile" value={`${roomState.drawPileCount} cards`} tone="bg-sky-400/15" />
                   <CenterCard
                     title="Discard Top"
                     value={roomState.discardTop ? roomState.discardTop.name : 'Empty'}
-                    tone="bg-rose-100"
+                    tone="bg-rose-400/15"
                   />
-                  <CenterCard title="Plays Used" value={`${roomState.turn?.playsUsed || 0} / 3`} tone="bg-amber-100" />
+                  <CenterCard title="Plays Used" value={`${roomState.turn?.playsUsed || 0} / 3`} tone="bg-amber-400/15" />
                 </div>
               </div>
 
-              <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
-                <div className="mb-4 text-xl font-black text-slate-900">Opponents</div>
+              <section className={glassPanelClass}>
+                <div className="mb-4 text-xl font-black text-white">Opponents</div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {otherPlayers.map((player) => (
                     <PlayerPanel key={player.id} player={player} isCurrentTurn={roomState.turn?.playerId === player.id} />
@@ -738,16 +740,16 @@ function Room() {
                 </div>
               </section>
 
-              <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+              <section className={glassPanelClass}>
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Your Table</div>
-                    <h2 className="text-2xl font-black text-slate-900">{me?.name}</h2>
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Your Table</div>
+                    <h2 className="text-2xl font-black text-white">{me?.name}</h2>
                   </div>
                   {roomState.phase === 'playing' && isMyTurn ? (
                     <button
                       onClick={() => submitCommand('end_turn', {})}
-                      className="rounded-2xl border-4 border-slate-900 bg-emerald-300 px-4 py-2 text-sm font-black uppercase text-slate-900"
+                      className="rounded-2xl bg-gradient-to-r from-emerald-400 to-lime-400 px-4 py-2 text-sm font-black uppercase text-slate-950"
                     >
                       End Turn
                     </button>
@@ -758,11 +760,11 @@ function Room() {
 
               {renderMovePanel()}
 
-              <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
-                <div className="mb-4 text-xl font-black text-slate-900">Recent Events</div>
-                <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl bg-slate-100 p-3">
+              <section className={glassPanelClass}>
+                <div className="mb-4 text-xl font-black text-white">Recent Events</div>
+                <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/35 p-3">
                   {(roomState.history || []).map((entry) => (
-                    <div key={entry.id} className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                    <div key={entry.id} className="rounded-xl border border-white/8 bg-white/8 px-3 py-2 text-sm font-semibold text-white/75">
                       {entry.message}
                     </div>
                   ))}
@@ -782,8 +784,8 @@ function Room() {
                 onSubmitPayment={sendPaymentSelection}
               />
 
-              <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
-                <div className="mb-4 text-xl font-black text-slate-900">Your Hand</div>
+              <section className={glassPanelClass}>
+                <div className="mb-4 text-xl font-black text-white">Your Hand</div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {roomState.you.hand.map((card) => (
                     <button
@@ -791,13 +793,13 @@ function Room() {
                       onClick={() => setSelectedCardId(card.id)}
                       className={`rounded-[1.35rem] border-4 px-4 py-3 text-left transition ${
                         selectedCardId === card.id
-                          ? 'border-slate-900 bg-amber-200 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]'
-                          : 'border-slate-300 bg-slate-50 hover:border-slate-900'
+                          ? 'border-amber-300 bg-amber-300/20 shadow-[0_12px_28px_rgba(245,166,35,0.25)]'
+                          : 'border-white/12 bg-white/8 hover:border-sky-300/70'
                       }`}
                     >
-                      <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">{card.category}</div>
-                      <div className="mt-1 text-lg font-black text-slate-900">{card.name}</div>
-                      <div className="mt-2 text-sm font-bold text-slate-600">Value: {card.value}M</div>
+                      <div className="text-xs font-black uppercase tracking-[0.2em] text-white/45">{card.category}</div>
+                      <div className="mt-1 text-lg font-black text-white">{card.name}</div>
+                      <div className="mt-2 text-sm font-bold text-white/65">Value: {card.value}M</div>
                     </button>
                   ))}
                 </div>
@@ -815,15 +817,15 @@ function Room() {
 function LobbyView({ roomState, me, onStart, onLeave }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-      <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-6 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+      <section className="rounded-[1.75rem] border border-white/15 bg-white/10 p-6 shadow-[0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Lobby</div>
-            <h2 className="text-3xl font-black text-slate-900">Waiting For Players</h2>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Lobby</div>
+            <h2 className="text-3xl font-black text-white">Waiting For Players</h2>
           </div>
           <button
             onClick={onLeave}
-            className="rounded-2xl border-4 border-slate-900 bg-rose-200 px-4 py-2 text-sm font-black uppercase text-slate-900"
+            className="rounded-2xl bg-gradient-to-r from-rose-300 to-red-400 px-4 py-2 text-sm font-black uppercase text-slate-950"
           >
             Leave
           </button>
@@ -831,16 +833,16 @@ function LobbyView({ roomState, me, onStart, onLeave }) {
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {roomState.players.map((player) => (
-            <div key={player.id} className="rounded-[1.35rem] border-4 border-slate-900 bg-sky-100 p-4">
+            <div key={player.id} className="rounded-[1.35rem] border border-white/12 bg-slate-950/30 p-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-lg font-black text-slate-900">{player.name}</div>
+                <div className="text-lg font-black text-white">{player.name}</div>
                 {player.isHost ? (
-                  <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-white">
+                  <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950">
                     Host
                   </span>
                 ) : null}
               </div>
-              <div className="mt-3 text-sm font-semibold text-slate-700">
+              <div className="mt-3 text-sm font-semibold text-white/65">
                 {player.connected ? 'Connected' : 'Disconnected'}
               </div>
             </div>
@@ -848,13 +850,13 @@ function LobbyView({ roomState, me, onStart, onLeave }) {
         </div>
       </section>
 
-      <section className="rounded-[1.75rem] border-4 border-slate-900 bg-amber-200 p-6 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
+      <section className="rounded-[1.75rem] border border-white/15 bg-white/10 p-6 shadow-[0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
         <div className="space-y-4">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Room Setup</div>
-            <h2 className="text-2xl font-black text-slate-900">Ready To Deal</h2>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Room Setup</div>
+            <h2 className="text-2xl font-black text-white">Ready To Deal</h2>
           </div>
-          <div className="rounded-[1.5rem] bg-white p-4 text-sm font-semibold text-slate-700">
+          <div className="rounded-[1.5rem] border border-white/12 bg-slate-950/30 p-4 text-sm font-semibold text-white/70">
             <p>2-6 players uses 1 deck.</p>
             <p>7-12 players uses 2 decks.</p>
             <p>13-18 players uses 3 decks.</p>
@@ -862,7 +864,7 @@ function LobbyView({ roomState, me, onStart, onLeave }) {
           <button
             onClick={onStart}
             disabled={!me?.isHost || roomState.players.length < 2}
-            className="w-full rounded-2xl border-4 border-slate-900 bg-emerald-300 px-4 py-3 text-base font-black uppercase text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-lime-400 px-4 py-3 text-base font-black uppercase text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {me?.isHost ? 'Start Game' : 'Only The Host Can Start'}
           </button>
@@ -883,22 +885,22 @@ function PromptPanel({
   onSubmitPayment,
 }) {
   return (
-    <section className="rounded-[1.75rem] border-4 border-slate-900 bg-white p-4 shadow-[10px_10px_0px_0px_rgba(15,23,42,1)]">
-      <div className="mb-4 text-xl font-black text-slate-900">Prompt</div>
+    <section className="rounded-[1.75rem] border border-white/15 bg-white/10 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
+      <div className="mb-4 text-xl font-black text-white">Prompt</div>
 
       {!promptState ? (
-        <div className="rounded-2xl bg-slate-100 px-4 py-6 text-sm font-semibold text-slate-600">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-6 text-sm font-semibold text-white/60">
           No pending responses.
         </div>
       ) : null}
 
       {promptState?.kind === 'jsn_chain' ? (
-        <div className="space-y-3 rounded-2xl bg-rose-50 p-4">
-          <div className="text-sm font-black uppercase tracking-[0.2em] text-rose-700">Just Say No Window</div>
-          <div className="text-base font-bold text-slate-900">
+        <div className="space-y-3 rounded-2xl border border-rose-300/20 bg-rose-400/15 p-4">
+          <div className="text-sm font-black uppercase tracking-[0.2em] text-rose-100">Just Say No Window</div>
+          <div className="text-base font-bold text-white">
             {promptState.canRespond ? 'Respond now.' : 'Waiting on another player.'}
           </div>
-          <div className="text-sm font-semibold text-slate-700">
+          <div className="text-sm font-semibold text-white/70">
             Action: {promptState.action.kind}
           </div>
           {promptState.canRespond ? (
@@ -909,14 +911,14 @@ function PromptPanel({
                   <button
                     key={card.id}
                     onClick={() => onJsn(card.id)}
-                    className="rounded-2xl border-4 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black uppercase text-slate-900"
+                    className="rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 px-4 py-2 text-sm font-black uppercase text-slate-950"
                   >
                     {card.name}
                   </button>
                 ))}
               </div>
               {!jsnCards.length ? (
-                <div className="text-sm font-semibold text-slate-600">No Just Say No card available. Pass to continue.</div>
+                <div className="text-sm font-semibold text-white/60">No Just Say No card available. Pass to continue.</div>
               ) : null}
             </div>
           ) : null}
@@ -924,35 +926,35 @@ function PromptPanel({
       ) : null}
 
       {promptState?.kind === 'payment' ? (
-        <div className="space-y-3 rounded-2xl bg-amber-50 p-4">
-          <div className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">Payment Required</div>
-          <div className="text-base font-bold text-slate-900">{promptState.amount}M is due.</div>
+        <div className="space-y-3 rounded-2xl border border-amber-300/20 bg-amber-400/15 p-4">
+          <div className="text-sm font-black uppercase tracking-[0.2em] text-amber-100">Payment Required</div>
+          <div className="text-base font-bold text-white">{promptState.amount}M is due.</div>
           {promptState.canRespond ? (
             <>
-              <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl bg-white p-3">
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/30 p-3">
                 {paymentOptions.map((option) => {
                   const serializedRef = JSON.stringify(option.ref);
                   return (
-                    <label key={serializedRef} className="flex items-start gap-3 rounded-xl border-2 border-slate-200 p-3">
+                    <label key={serializedRef} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
                       <input
                         type="checkbox"
                         checked={paymentDraft.includes(serializedRef)}
                         onChange={() => onTogglePayment(serializedRef)}
                       />
-                      <span className="text-sm font-semibold text-slate-700">
+                      <span className="text-sm font-semibold text-white/75">
                         {option.label} ({option.value}M)
                       </span>
                     </label>
                   );
                 })}
                 {!paymentOptions.length ? (
-                  <div className="text-sm font-semibold text-slate-600">You have nothing on the table to pay with.</div>
+                  <div className="text-sm font-semibold text-white/60">You have nothing on the table to pay with.</div>
                 ) : null}
               </div>
               <ActionButton onClick={onSubmitPayment}>Submit Payment</ActionButton>
             </>
           ) : (
-            <div className="text-sm font-semibold text-slate-700">Waiting on the paying player.</div>
+            <div className="text-sm font-semibold text-white/70">Waiting on the paying player.</div>
           )}
         </div>
       ) : null}
@@ -967,8 +969,8 @@ function MyTable({ me }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[1.35rem] bg-emerald-100 p-4">
-        <div className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600">
+      <div className="rounded-[1.35rem] border border-emerald-300/20 bg-emerald-400/12 p-4">
+        <div className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-white/55">
           Bank {me.bankTotal}M
         </div>
         <div className="flex flex-wrap gap-2">
@@ -991,24 +993,24 @@ function MyTable({ me }) {
 
 function PlayerPanel({ player, isCurrentTurn }) {
   return (
-    <div className={`rounded-[1.35rem] border-4 p-4 ${isCurrentTurn ? 'border-slate-900 bg-amber-100' : 'border-slate-200 bg-slate-50'}`}>
+    <div className={`rounded-[1.35rem] border p-4 ${isCurrentTurn ? 'border-amber-300/70 bg-amber-300/18' : 'border-white/10 bg-white/6'}`}>
       <div className="flex items-center justify-between gap-3">
-        <div className="text-lg font-black text-slate-900">{player.name}</div>
+        <div className="text-lg font-black text-white">{player.name}</div>
         {!player.connected ? (
-          <span className="rounded-full bg-rose-200 px-3 py-1 text-xs font-black uppercase text-rose-900">Away</span>
+          <span className="rounded-full bg-rose-300 px-3 py-1 text-xs font-black uppercase text-slate-950">Away</span>
         ) : null}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-slate-700">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-white/70">
         <div>Hand: {player.handCount}</div>
         <div>Bank: {player.bankTotal}M</div>
       </div>
       <div className="mt-3 space-y-2">
         {player.propertySets.map((propertySet) => (
-          <div key={propertySet.id} className="rounded-xl bg-white p-3">
+          <div key={propertySet.id} className="rounded-xl border border-white/8 bg-slate-950/28 p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-black text-slate-900">{labelColor(propertySet.color)}</span>
+              <span className="text-sm font-black text-white">{labelColor(propertySet.color)}</span>
               {propertySet.complete ? (
-                <span className="rounded-full bg-emerald-200 px-2 py-1 text-[10px] font-black uppercase text-emerald-900">
+                <span className="rounded-full bg-emerald-300 px-2 py-1 text-[10px] font-black uppercase text-slate-950">
                   Complete
                 </span>
               ) : null}
@@ -1029,14 +1031,14 @@ function PlayerPanel({ player, isCurrentTurn }) {
 
 function PropertySetPanel({ propertySet }) {
   return (
-    <div className="rounded-[1.35rem] border-4 border-slate-900 bg-sky-50 p-4">
+    <div className="rounded-[1.35rem] border border-white/10 bg-white/6 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-lg font-black text-slate-900">{labelColor(propertySet.color)}</div>
-          <div className="text-sm font-semibold text-slate-700">Rent {propertySet.rentValue}M</div>
+          <div className="text-lg font-black text-white">{labelColor(propertySet.color)}</div>
+          <div className="text-sm font-semibold text-white/65">Rent {propertySet.rentValue}M</div>
         </div>
         {propertySet.complete ? (
-          <span className="rounded-full bg-emerald-200 px-3 py-1 text-xs font-black uppercase text-emerald-900">
+          <span className="rounded-full bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950">
             Complete
           </span>
         ) : null}
@@ -1058,18 +1060,18 @@ function PropertySetPanel({ propertySet }) {
 
 function CenterCard({ title, value, tone }) {
   return (
-    <div className={`rounded-[1.35rem] p-4 ${tone}`}>
-      <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-600">{title}</div>
-      <div className="mt-2 text-xl font-black text-slate-900">{value}</div>
+    <div className={`rounded-[1.35rem] border border-white/10 p-4 text-white ${tone}`}>
+      <div className="text-xs font-black uppercase tracking-[0.2em] text-white/55">{title}</div>
+      <div className="mt-2 text-xl font-black text-white">{value}</div>
     </div>
   );
 }
 
 function StatusChip({ label, value, warning = false }) {
   return (
-    <div className={`rounded-2xl border-4 px-4 py-2 ${warning ? 'border-rose-900 bg-rose-100' : 'border-slate-900 bg-slate-100'}`}>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
-      <div className="text-sm font-black text-slate-900">{value}</div>
+    <div className={`rounded-2xl border px-4 py-2 ${warning ? 'border-rose-300/30 bg-rose-400/18' : 'border-white/12 bg-white/10'}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">{label}</div>
+      <div className="text-sm font-black text-white">{value}</div>
     </div>
   );
 }
@@ -1078,7 +1080,7 @@ function ActionButton({ children, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-2xl border-4 border-slate-900 bg-amber-300 px-4 py-3 text-sm font-black uppercase text-slate-900"
+      className="rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 px-4 py-3 text-sm font-black uppercase text-slate-950 shadow-[0_10px_24px_rgba(245,166,35,0.28)]"
     >
       {children}
     </button>
@@ -1097,7 +1099,7 @@ function TargetPlayerAction({ players, value, onChange, onConfirm, buttonLabel }
 function TargetPlayerSelect({ players, value, onChange }) {
   return (
     <select
-      className="w-full rounded-2xl border-4 border-slate-900 bg-slate-50 px-3 py-2 font-semibold"
+      className="w-full rounded-2xl border border-white/15 bg-slate-950/35 px-3 py-3 font-semibold text-white outline-none transition focus:border-sky-300 focus:bg-slate-950/50"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
@@ -1113,16 +1115,16 @@ function TargetPlayerSelect({ players, value, onChange }) {
 
 function MiniCard({ title, subtitle }) {
   return (
-    <div className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm">
-      <div className="font-black text-slate-900">{title}</div>
-      <div className="text-xs font-semibold text-slate-600">{subtitle}</div>
+    <div className="rounded-xl border border-white/10 bg-slate-950/32 px-3 py-2 text-sm">
+      <div className="font-black text-white">{title}</div>
+      <div className="text-xs font-semibold text-white/55">{subtitle}</div>
     </div>
   );
 }
 
 function EmptySlot({ label }) {
   return (
-    <div className="rounded-[1.35rem] border-4 border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+    <div className="rounded-[1.35rem] border border-dashed border-white/18 bg-slate-950/22 p-4 text-sm font-semibold text-white/45">
       {label}
     </div>
   );
