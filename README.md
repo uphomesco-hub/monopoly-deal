@@ -1,71 +1,44 @@
 # Monopoly Deal
 
-A private-room multiplayer Monopoly Deal game built on the React + Vite + Socket.IO stack from the original skribbl clone rewrite.
+A private-room multiplayer Monopoly Deal game built on the React + Vite client from the skribbl clone rewrite, now running in peer-hosted mode.
 
 ## Stack
 
 - Client: React 19, Vite, React Router, Tailwind CSS
-- Server: Express 5, Socket.IO
-- Hosting:
-  - Frontend can be hosted on GitHub Pages
-  - Backend must be hosted separately because GitHub Pages cannot run Express or Socket.IO
+- Realtime transport: PeerJS over WebRTC
+- Rules engine: browser-hosted authoritative room engine in the host player's tab
+- Hosting: GitHub Pages for the static client
+
+## How Hosting Works
+
+When a player creates a room, that browser tab becomes the room host and runs the game state locally. Other players connect directly to that host through PeerJS.
+
+That means:
+
+- no custom backend is required for gameplay
+- GitHub Pages is enough for the app itself
+- the host tab must stay open during the game
+- if the host closes the tab, the room ends
+
+PeerJS still uses its public signaling service to help peers find each other, but the Monopoly Deal room state itself is not stored on your own backend.
 
 ## Local Development
 
-1. Start the server:
-
-```bash
-cd server
-npm install
-npm run dev
-```
-
-2. Start the client:
-
 ```bash
 cd client
 npm install
 npm run dev
 ```
 
-3. Open the Vite URL shown in the terminal. Local development uses `http://localhost:3001` by default for the Socket.IO backend.
+Then open the Vite URL shown in the terminal.
 
-## Production Deployment
-
-To make the public game work, you need both deployments:
-
-1. Deploy the Express + Socket.IO server somewhere public.
-2. Set the GitHub repository variable `VITE_SERVER_URL` to that backend URL.
-3. Let the GitHub Pages workflow rebuild the client.
-
-Example backend URL:
-
-```text
-https://your-monopoly-deal-server.onrender.com
-```
-
-Example GitHub CLI command:
-
-```bash
-gh variable set VITE_SERVER_URL -R uphomesco-hub/monopoly-deal --body "https://your-monopoly-deal-server.onrender.com"
-```
-
-If `VITE_SERVER_URL` is missing in production, the client now shows a deployment warning instead of trying to connect to `localhost:3001`.
-
-## Scripts
-
-Client:
+## Build
 
 ```bash
 cd client
-npm run dev
 npm run build
 ```
 
-Server:
+## Optional Server Folder
 
-```bash
-cd server
-npm run dev
-npm test
-```
+The repository still contains the earlier Express + Socket.IO server implementation and tests, but the current GitHub Pages client no longer depends on that server to run rooms.
