@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { socket } from '../lib/socket';
+import {
+  BACKEND_CONFIG_MESSAGE,
+  BACKEND_CONFIGURED,
+  SERVER_URL,
+  getSocketErrorMessage,
+  socket,
+} from '../lib/socket';
 import { setStoredToken } from '../lib/storage';
 
 function Home() {
@@ -11,6 +17,10 @@ function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+    }
+
     function handleRoomCreated({ roomId: createdRoomId, playerToken }) {
       setStoredToken(createdRoomId, playerToken);
       navigate(`/room/${createdRoomId}?name=${encodeURIComponent(username.trim())}`);
@@ -20,16 +30,27 @@ function Home() {
       setError(event.message);
     }
 
+    function handleConnectError(nextError) {
+      setError(getSocketErrorMessage(nextError));
+    }
+
     socket.on('room_created', handleRoomCreated);
     socket.on('game_error', handleGameError);
+    socket.on('connect_error', handleConnectError);
 
     return () => {
       socket.off('room_created', handleRoomCreated);
       socket.off('game_error', handleGameError);
+      socket.off('connect_error', handleConnectError);
     };
   }, [navigate, username]);
 
   function createRoom() {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+      return;
+    }
+
     if (!username.trim()) {
       setError('Enter a player name first.');
       return;
@@ -40,6 +61,11 @@ function Home() {
   }
 
   function joinRoom() {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+      return;
+    }
+
     if (!username.trim() || !roomId.trim()) {
       setError('Enter both your name and a room code.');
       return;
@@ -78,13 +104,15 @@ function Home() {
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               onClick={createRoom}
-              className="rounded-[1.5rem] bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-4 text-base font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(74,144,226,0.35)]"
+              disabled={!BACKEND_CONFIGURED}
+              className="rounded-[1.5rem] bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-4 text-base font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(74,144,226,0.35)] disabled:cursor-not-allowed disabled:opacity-45"
             >
               Create Room
             </button>
             <button
               onClick={() => setShowJoin((current) => !current)}
-              className="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 text-base font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
+              disabled={!BACKEND_CONFIGURED}
+              className="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 text-base font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)] disabled:cursor-not-allowed disabled:opacity-45"
             >
               Join Room
             </button>
@@ -105,7 +133,8 @@ function Home() {
               />
               <button
                 onClick={joinRoom}
-                className="rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-black uppercase tracking-[0.16em] text-slate-950 shadow-[0_10px_30px_rgba(245,166,35,0.35)]"
+                disabled={!BACKEND_CONFIGURED}
+                className="rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-base font-black uppercase tracking-[0.16em] text-slate-950 shadow-[0_10px_30px_rgba(245,166,35,0.35)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Join
               </button>
@@ -123,6 +152,10 @@ function Home() {
               {error}
             </div>
           ) : null}
+
+          <div className="rounded-2xl border border-white/12 bg-slate-950/30 px-4 py-3 text-left text-sm font-semibold text-white/65">
+            {BACKEND_CONFIGURED ? `Live server: ${SERVER_URL}` : 'Live server: not configured for this deployment'}
+          </div>
         </div>
       </div>
     </div>

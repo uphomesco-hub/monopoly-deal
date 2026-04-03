@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { emitGameCommand, socket } from '../lib/socket';
+import {
+  BACKEND_CONFIG_MESSAGE,
+  BACKEND_CONFIGURED,
+  getSocketErrorMessage,
+  emitGameCommand,
+  socket,
+} from '../lib/socket';
 import { clearStoredToken, getStoredToken, setStoredToken } from '../lib/storage';
 
 function Room() {
@@ -21,6 +27,10 @@ function Room() {
   const attemptedJoinRef = useRef(false);
 
   useEffect(() => {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+    }
+
     function handleRoomState(nextState) {
       if (nextState.id !== normalizedRoomId) {
         return;
@@ -52,12 +62,17 @@ function Room() {
       setError(event.message);
     }
 
+    function handleConnectError(nextError) {
+      setError(getSocketErrorMessage(nextError));
+    }
+
     socket.on('room_state', handleRoomState);
     socket.on('prompt_state', handlePrompt);
     socket.on('timer_state', handleTimer);
     socket.on('room_joined', handleJoinLike);
     socket.on('room_reconnected', handleJoinLike);
     socket.on('game_error', handleGameError);
+    socket.on('connect_error', handleConnectError);
 
     return () => {
       socket.off('room_state', handleRoomState);
@@ -66,11 +81,17 @@ function Room() {
       socket.off('room_joined', handleJoinLike);
       socket.off('room_reconnected', handleJoinLike);
       socket.off('game_error', handleGameError);
+      socket.off('connect_error', handleConnectError);
     };
   }, [normalizedRoomId, playerToken]);
 
   useEffect(() => {
     if (attemptedJoinRef.current) {
+      return;
+    }
+
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
       return;
     }
 
@@ -101,6 +122,11 @@ function Room() {
   }
 
   function submitCommand(type, payload) {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+      return;
+    }
+
     if (!playerToken) {
       setError('This room session is not connected yet.');
       return;
@@ -110,6 +136,11 @@ function Room() {
   }
 
   function startGame() {
+    if (!BACKEND_CONFIGURED) {
+      setError(BACKEND_CONFIG_MESSAGE);
+      return;
+    }
+
     if (!playerToken) {
       return;
     }
@@ -689,7 +720,7 @@ function Room() {
 
         {!roomState ? (
           <div className={`${glassPanelClass} p-8 text-center text-lg font-bold text-white/75`}>
-            Connecting to room...
+            {BACKEND_CONFIGURED ? 'Connecting to room...' : 'Live backend not configured for this deployment.'}
           </div>
         ) : null}
 
