@@ -968,8 +968,8 @@ function Room() {
   }
 
   return (
-    <div className="min-h-screen pb-64 pt-2 md:h-screen md:overflow-hidden md:pb-[21rem] md:pt-2">
-      <div className="table-glow mx-auto w-full max-w-none px-2 md:h-screen md:px-3">
+    <div className="min-h-screen overflow-x-hidden pb-64 pt-2 md:h-screen md:overflow-hidden md:pb-[21rem] md:pt-2">
+      <div className="table-glow mx-auto w-full max-w-none overflow-x-hidden px-2 md:h-screen md:px-3">
         <div className="md:flex md:h-screen md:items-start md:gap-3">
           {roomState?.phase !== 'lobby' && roomState ? (
             <DesktopRoomRail
@@ -1434,20 +1434,22 @@ function HandFan({ cards, selectedCardId, onSelect, sidebarCollapsed }) {
     <>
       {/* Mobile Shell UI (Horizontal scrolling) */}
       <div className="fixed inset-x-0 bottom-24 z-40 px-3 md:hidden">
-        <div className="flex gap-2 overflow-x-auto pb-3 snap-x">
-          {cards.map((card) => {
-            const selected = selectedCardId === card.id;
-            return (
-              <div key={card.id} className="snap-center shrink-0">
-                 <GameCard card={card} selected={selected} onClick={() => onSelect(card.id)} compactMobile />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <div className="pointer-events-none fixed inset-x-0 bottom-16 z-40 flex justify-center md:hidden">
-        <div className="rounded-full bg-[rgba(247,247,243,0.7)] px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text)] shadow-[0_8px_18px_rgba(45,47,45,0.08)] backdrop-blur-sm">
-          {cards.length} cards in hand
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
+            <div className="rounded-full bg-[rgba(247,247,243,0.58)] px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[rgba(45,47,45,0.82)] shadow-[0_8px_18px_rgba(45,47,45,0.06)] backdrop-blur-[2px]">
+            {cards.length} cards in hand
+            </div>
+          </div>
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto pb-3 snap-x">
+            {cards.map((card) => {
+              const selected = selectedCardId === card.id;
+              return (
+                <div key={card.id} className="snap-center shrink-0">
+                   <GameCard card={card} selected={selected} onClick={() => onSelect(card.id)} compactMobile />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

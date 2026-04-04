@@ -35,6 +35,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   font-family: 'Work Sans', 'Segoe UI', sans-serif;
   color: var(--text);
   background:
@@ -97,6 +98,7 @@ input, select, textarea {
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .material-symbols-outlined {
@@ -233,6 +235,7 @@ input, select, textarea {
 /* Table background glow */
 .table-glow {
   position: relative;
+  overflow-x: hidden;
 }
 
 .table-glow::before {
