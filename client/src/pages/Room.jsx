@@ -1493,19 +1493,19 @@ function HandFan({ cards, selectedCardId, onSelect, sidebarCollapsed }) {
 
 function MobileRoomNav({ activeView, options, onChangeView }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(173,173,170,0.18)] bg-[rgba(247,247,243,0.96)] px-3 pb-5 pt-2 shadow-[0_-10px_24px_rgba(45,47,45,0.08)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(173,173,170,0.18)] bg-[rgba(247,247,243,0.96)] px-3 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-10px_24px_rgba(45,47,45,0.08)] md:hidden">
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((option) => (
           <button
             key={option.id}
             onClick={() => onChangeView(option.id)}
-            className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${
+            className={`flex flex-col items-center justify-center rounded-xl px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] ${
               activeView === option.id
                 ? 'bg-[rgba(254,195,48,0.88)] text-[var(--text)]'
                 : 'text-[var(--text-soft)]'
             }`}
           >
-            <span className="material-symbols-outlined mb-1 text-[20px]">{option.icon}</span>
+            <span className="material-symbols-outlined mb-0.5 text-[18px]">{option.icon}</span>
             {option.label}
           </button>
         ))}
