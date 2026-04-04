@@ -95,7 +95,7 @@ class PeerSocket {
       this.peer = peer;
       this.setupHostPeer();
 
-      const { room, player } = createGameRoom(peer.id, username);
+      const { room, player } = createGameRoom(peer.id, username, roomId);
       room.lastBroadcastHistoryId = null;
       this.room = room;
       this.localPlayerId = player.id;
@@ -603,12 +603,26 @@ class PeerSocket {
 
   openPeer(peerId) {
     return new Promise((resolve, reject) => {
-      const peer = new Peer(peerId, {
+      const peerOptions = {
         debug: 1,
         config: {
           iceServers: this.iceServers,
         },
-      });
+      };
+      const customPeerHost = import.meta.env.VITE_PEER_HOST;
+      const customPeerPort = import.meta.env.VITE_PEER_PORT;
+      const customPeerPath = import.meta.env.VITE_PEER_PATH;
+      const customPeerSecure = import.meta.env.VITE_PEER_SECURE;
+
+      if (customPeerHost) {
+        peerOptions.host = customPeerHost;
+        if (customPeerPort) {
+          peerOptions.port = Number(customPeerPort);
+        }
+        peerOptions.path = customPeerPath || '/';
+        peerOptions.secure = customPeerSecure === 'true';
+      }
+      const peer = new Peer(peerId, peerOptions);
 
       const timeout = window.setTimeout(() => {
         cleanup();

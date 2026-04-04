@@ -194,6 +194,8 @@ function handleCommand(room, playerId, type, payload = {}) {
         return moveBuilding(room, player, payload);
     case 'play_action':
         return playAction(room, player, payload);
+    case 'discard_card':
+        return discardCard(room, player, payload.cardId);
     case 'end_turn':
         return endTurn(room, player);
     default:
@@ -396,6 +398,20 @@ function bankCard(room, player, cardId) {
     return checkForPostActionState(room);
 }
 
+function discardCard(room, player, cardId) {
+    const card = requireHandCard(room, player, cardId);
+    if (!card) {
+        return { error: 'That card is not in your hand.' };
+    }
+    removeHandCard(player, cardId);
+    room.discardPile.push(cardId);
+    pushHistory(room, `${player.name} discarded ${card.name}.`);
+    touchRoom(room);
+    
+    // Auto-end turn if they discarded down to 7 and have 3 plays used (optional logic, but handleCommand already calls checkForPostActionState if we want? Actually, let's just return ok).
+    return { ok: true };
+}
+
 function playProperty(room, player, payload) {
     if (room.turn.playsUsed >= MAX_PLAYS_PER_TURN) {
         return { error: 'You have already used all 3 plays this turn.' };
@@ -448,7 +464,7 @@ function moveWild(room, player, payload) {
         return { error: 'The destination property set was not found.' };
     }
 
-    removePropertyCardFromSet(player, sourceSet.id, card.instanceId);
+    removePropertyCardFromSet(room, player, sourceSet.id, card.instanceId);
     addPropertyCardToPlayer(room, player, card.instanceId, assignedColor, destinationSet?.id || null);
     pushHistory(room, `${player.name} moved ${card.name}.`);
     touchRoom(room);
@@ -970,7 +986,7 @@ function resolveSlyDeal(room, action, targetPlayerId) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
 
-    const extracted = extractPropertyCard(target, located.propertySet.id, action.targetCardId);
+    const extracted = extractPropertyCard(room, target, located.propertySet.id, action.targetCardId);
     if (!extracted) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
@@ -1000,8 +1016,8 @@ function resolveForcedDeal(room, action, targetPlayerId) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
 
-    const sourceCard = extractPropertyCard(source, sourceLocated.propertySet.id, action.sourceCardId);
-    const targetCard = extractPropertyCard(target, targetLocated.propertySet.id, action.targetCardId);
+    const sourceCard = extractPropertyCard(room, source, sourceLocated.propertySet.id, action.sourceCardId);
+    const targetCard = extractPropertyCard(room, target, targetLocated.propertySet.id, action.targetCardId);
 
     addPropertyCardToPlayer(room, source, targetCard.cardId, targetCard.assignedColor, null);
     addPropertyCardToPlayer(room, target, sourceCard.cardId, sourceCard.assignedColor, null);
@@ -1178,6 +1194,13 @@ function addPropertyCardToPlayer(room, player, cardId, assignedColor, targetSetI
     }
 
     if (!propertySet) {
+        // Try to automatically merge into an existing incomplete set of the same color
+        propertySet = player.propertySets.find(
+            (entry) => entry.color === assignedColor && !getPropertySetStatus(room, entry).complete
+        );
+    }
+
+    if (!propertySet) {
         propertySet = {
             id: `set-${room.nextSetId++}`,
             color: assignedColor,
@@ -1194,7 +1217,7 @@ function addPropertyCardToPlayer(room, player, cardId, assignedColor, targetSetI
     });
 }
 
-function removePropertyCardFromSet(player, setId, cardId) {
+function removePropertyCardFromSet(room, player, setId, cardId) {
     const propertySet = player.propertySets.find((entry) => entry.id === setId);
     if (!propertySet) {
         return null;
@@ -1210,8 +1233,8 @@ function removePropertyCardFromSet(player, setId, cardId) {
     return removed;
 }
 
-function extractPropertyCard(player, setId, cardId) {
-    return removePropertyCardFromSet(player, setId, cardId);
+function extractPropertyCard(room, player, setId, cardId) {
+    return removePropertyCardFromSet(room, player, setId, cardId);
 }
 
 function normalizePropertySet(room, player, propertySet) {

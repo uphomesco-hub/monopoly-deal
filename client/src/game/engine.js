@@ -13,9 +13,9 @@ function randomId() {
     return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function createRoom(hostSocketId, username) {
+function createRoom(hostSocketId, username, roomId) {
     const room = {
-        id: generateRoomId(),
+        id: roomId || generateRoomId(),
         phase: 'lobby',
         players: [],
         hostPlayerId: null,
@@ -197,6 +197,8 @@ function handleCommand(room, playerId, type, payload = {}) {
         return moveBuilding(room, player, payload);
     case 'play_action':
         return playAction(room, player, payload);
+    case 'discard_card':
+        return discardCard(room, player, payload.cardId);
     case 'end_turn':
         return endTurn(room, player);
     default:
@@ -284,7 +286,7 @@ function getPromptForPlayer(room, playerId) {
             currentPlayerId: room.prompt.currentPlayerId,
             sourcePlayerId: room.prompt.sourcePlayerId,
             targetPlayerId: room.prompt.targetPlayerId,
-            action: summarizeAction(room.prompt.action),
+            action: summarizeAction(room, room.prompt.action),
             sequence: room.prompt.sequence.map((item) => ({
                 playerId: item.playerId,
                 card: serializeCard(room, item.cardId)
@@ -301,7 +303,7 @@ function getPromptForPlayer(room, playerId) {
                 currentPlayerId: room.prompt.currentPlayerId,
                 sourcePlayerId: room.prompt.sourcePlayerId,
                 amount: room.prompt.amount,
-                action: summarizeAction(room.prompt.action),
+                action: summarizeAction(room, room.prompt.action),
                 canRespond: false
             };
         }
@@ -313,7 +315,7 @@ function getPromptForPlayer(room, playerId) {
             currentPlayerId: room.prompt.currentPlayerId,
             sourcePlayerId: room.prompt.sourcePlayerId,
             amount: room.prompt.amount,
-            action: summarizeAction(room.prompt.action),
+            action: summarizeAction(room, room.prompt.action),
             canRespond: true,
             options: getPaymentOptions(room, player)
         };
@@ -358,7 +360,9 @@ function serializePropertySet(room, propertySet) {
         })),
         house: propertySet.houseCardId ? serializeCard(room, propertySet.houseCardId) : null,
         hotel: propertySet.hotelCardId ? serializeCard(room, propertySet.hotelCardId) : null,
-        rentValue: getRentAmount(room, propertySet)
+        rentValue: getRentAmount(room, propertySet),
+        setSize: COLORS[propertySet.color].setSize,
+        rentLevels: COLORS[propertySet.color].rent
     };
 }
 
@@ -451,7 +455,7 @@ function moveWild(room, player, payload) {
         return { error: 'The destination property set was not found.' };
     }
 
-    removePropertyCardFromSet(player, sourceSet.id, card.instanceId);
+    removePropertyCardFromSet(room, player, sourceSet.id, card.instanceId);
     addPropertyCardToPlayer(room, player, card.instanceId, assignedColor, destinationSet?.id || null);
     pushHistory(room, `${player.name} moved ${card.name}.`);
     touchRoom(room);
@@ -523,6 +527,22 @@ function playAction(room, player, payload) {
     }
 }
 
+function discardCard(room, player, cardId) {
+    if (room.turn.playsUsed >= MAX_PLAYS_PER_TURN) {
+        return { error: 'You have already used all 3 plays this turn.' };
+    }
+    const card = requireHandCard(room, player, cardId);
+    if (!card) {
+        return { error: 'That card is not in your hand.' };
+    }
+    removeHandCard(player, card.instanceId);
+    room.discardPile.push(card.instanceId);
+    room.turn.playsUsed += 1;
+    pushHistory(room, `${player.name} discarded ${card.name}.`);
+    touchRoom(room);
+    return checkForPostActionState(room);
+}
+
 function endTurn(room, player) {
     if (player.hand.length > MAX_HAND_SIZE) {
         return { error: 'Discard down to 7 cards before ending your turn.' };
@@ -546,6 +566,7 @@ function handlePromptAnswer(room, playerId, payload) {
     }
 
     if (payload.choice === 'play_jsn') {
+        const remainingPromptMs = Math.max(0, (room.timer?.expiresAt || Date.now()) - Date.now());
         const card = requireHandCard(room, player, payload.cardId);
         if (!card || card.actionType !== 'justSayNo') {
             return { error: 'A Just Say No card is required.' };
@@ -561,7 +582,7 @@ function handlePromptAnswer(room, playerId, payload) {
             room.prompt.currentPlayerId === room.prompt.targetPlayerId
                 ? room.prompt.sourcePlayerId
                 : room.prompt.targetPlayerId;
-        setPromptTimer(room, room.prompt.currentPlayerId);
+        setPromptTimer(room, room.prompt.currentPlayerId, remainingPromptMs);
         pushHistory(room, `${player.name} played Just Say No.`);
         touchRoom(room);
         return { ok: true };
@@ -573,6 +594,7 @@ function handlePromptAnswer(room, playerId, payload) {
 
     const applies = room.prompt.sequence.length % 2 === 0;
     const { action, targetPlayerId } = room.prompt;
+    const remainingPromptMs = Math.max(0, (room.timer?.expiresAt || Date.now()) - Date.now());
 
     if (!applies) {
         pushHistory(room, `${getPlayer(room, targetPlayerId)?.name || 'The target'} blocked ${describeAction(action)}.`);
@@ -583,7 +605,7 @@ function handlePromptAnswer(room, playerId, payload) {
     }
 
     clearPrompt(room);
-    resolveActionAgainstTarget(room, action, targetPlayerId);
+    resolveActionAgainstTarget(room, action, targetPlayerId, remainingPromptMs);
     touchRoom(room);
     return { ok: true };
 }
@@ -903,13 +925,13 @@ function beginJsnChain(room, action, targetPlayerId) {
     setPromptTimer(room, targetPlayerId);
 }
 
-function resolveActionAgainstTarget(room, action, targetPlayerId) {
+function resolveActionAgainstTarget(room, action, targetPlayerId, remainingPromptMs = PROMPT_TIMER_MS) {
     switch (action.kind) {
     case 'debtCollector':
     case 'birthday':
     case 'rentSingle':
     case 'rentAll':
-        return startPaymentPrompt(room, action, targetPlayerId, action.amount);
+        return startPaymentPrompt(room, action, targetPlayerId, action.amount, remainingPromptMs);
     case 'slyDeal':
         return resolveSlyDeal(room, action, targetPlayerId);
     case 'forcedDeal':
@@ -921,10 +943,16 @@ function resolveActionAgainstTarget(room, action, targetPlayerId) {
     }
 }
 
-function startPaymentPrompt(room, action, debtorId, amount) {
+function startPaymentPrompt(room, action, debtorId, amount, remainingPromptMs = PROMPT_TIMER_MS) {
     const debtor = getPlayer(room, debtorId);
     const creditor = getPlayer(room, action.sourcePlayerId);
     if (!debtor || !creditor || debtor.eliminated) {
+        return continueOrFinishAction(room, action, debtorId);
+    }
+
+    if (remainingPromptMs <= 0) {
+        const refs = autoSelectPayment(room, debtor, amount);
+        applyPayment(room, debtor, creditor, refs);
         return continueOrFinishAction(room, action, debtorId);
     }
 
@@ -936,7 +964,7 @@ function startPaymentPrompt(room, action, debtorId, amount) {
         action,
         amount
     };
-    setPromptTimer(room, debtorId);
+    setPromptTimer(room, debtorId, remainingPromptMs);
     pushHistory(room, `${debtor.name} must pay ${creditor.name} ${amount}M.`);
 }
 
@@ -973,7 +1001,7 @@ function resolveSlyDeal(room, action, targetPlayerId) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
 
-    const extracted = extractPropertyCard(target, located.propertySet.id, action.targetCardId);
+    const extracted = extractPropertyCard(room, target, located.propertySet.id, action.targetCardId);
     if (!extracted) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
@@ -1003,8 +1031,8 @@ function resolveForcedDeal(room, action, targetPlayerId) {
         return continueOrFinishAction(room, action, targetPlayerId);
     }
 
-    const sourceCard = extractPropertyCard(source, sourceLocated.propertySet.id, action.sourceCardId);
-    const targetCard = extractPropertyCard(target, targetLocated.propertySet.id, action.targetCardId);
+    const sourceCard = extractPropertyCard(room, source, sourceLocated.propertySet.id, action.sourceCardId);
+    const targetCard = extractPropertyCard(room, target, targetLocated.propertySet.id, action.targetCardId);
 
     addPropertyCardToPlayer(room, source, targetCard.cardId, targetCard.assignedColor, null);
     addPropertyCardToPlayer(room, target, sourceCard.cardId, sourceCard.assignedColor, null);
@@ -1046,7 +1074,7 @@ function resolvePromptTimeout(room) {
         const { action, targetPlayerId } = room.prompt;
         clearPrompt(room);
         if (applies) {
-            resolveActionAgainstTarget(room, action, targetPlayerId);
+            resolveActionAgainstTarget(room, action, targetPlayerId, 0);
         } else {
             continueOrFinishAction(room, action, targetPlayerId);
         }
@@ -1181,6 +1209,12 @@ function addPropertyCardToPlayer(room, player, cardId, assignedColor, targetSetI
     }
 
     if (!propertySet) {
+        propertySet = player.propertySets.find(
+            (entry) => entry.color === assignedColor && !getPropertySetStatus(room, entry).complete
+        );
+    }
+
+    if (!propertySet) {
         propertySet = {
             id: `set-${room.nextSetId++}`,
             color: assignedColor,
@@ -1197,7 +1231,7 @@ function addPropertyCardToPlayer(room, player, cardId, assignedColor, targetSetI
     });
 }
 
-function removePropertyCardFromSet(player, setId, cardId) {
+function removePropertyCardFromSet(room, player, setId, cardId) {
     const propertySet = player.propertySets.find((entry) => entry.id === setId);
     if (!propertySet) {
         return null;
@@ -1213,8 +1247,8 @@ function removePropertyCardFromSet(player, setId, cardId) {
     return removed;
 }
 
-function extractPropertyCard(player, setId, cardId) {
-    return removePropertyCardFromSet(player, setId, cardId);
+function extractPropertyCard(room, player, setId, cardId) {
+    return removePropertyCardFromSet(room, player, setId, cardId);
 }
 
 function normalizePropertySet(room, player, propertySet) {
@@ -1296,11 +1330,7 @@ function totalBankValue(room, player) {
 
 function getPropertySetStatus(room, propertySet) {
     const meta = COLORS[propertySet.color];
-    const hasStandardProperty = propertySet.cards.some((entry) => {
-        const card = getCard(room, entry.cardId);
-        return card?.type === 'property' && card.colors[0] === propertySet.color;
-    });
-    const complete = hasStandardProperty && propertySet.cards.length >= meta.setSize;
+    const complete = propertySet.cards.length >= meta.setSize;
     const protectedCardIds = complete
         ? buildProtectedCardIds(room, propertySet.cards, propertySet.color, meta.setSize)
         : [];
@@ -1320,26 +1350,7 @@ function getProtectedCardIds(room, propertySet) {
 }
 
 function buildProtectedCardIds(room, entries, color, setSize) {
-    const selected = entries.slice(0, setSize).map((entry) => entry.cardId);
-    const hasStandard = selected.some((cardId) => {
-        const card = getCard(room, cardId);
-        return card?.type === 'property' && card.colors[0] === color;
-    });
-
-    if (hasStandard) {
-        return selected;
-    }
-
-    const replacement = entries.find((entry) => {
-        const card = getCard(room, entry.cardId);
-        return card?.type === 'property' && card.colors[0] === color;
-    });
-
-    if (replacement) {
-        selected[selected.length - 1] = replacement.cardId;
-    }
-
-    return Array.from(new Set(selected));
+    return Array.from(new Set(entries.slice(0, setSize).map((entry) => entry.cardId)));
 }
 
 function isStealableCard(room, player, propertySet, cardId) {
@@ -1469,7 +1480,7 @@ function applyPayment(room, debtor, creditor, refs) {
         }
 
         if (ref.kind === 'property') {
-            const extracted = extractPropertyCard(debtor, ref.setId, ref.cardId);
+            const extracted = extractPropertyCard(room, debtor, ref.setId, ref.cardId);
             if (extracted) {
                 addPropertyCardToPlayer(room, creditor, extracted.cardId, extracted.assignedColor, null);
                 paidAmount.push(getCard(room, extracted.cardId)?.value || 0);
@@ -1607,11 +1618,11 @@ function setTurnTimer(room, playerId) {
     };
 }
 
-function setPromptTimer(room, playerId) {
+function setPromptTimer(room, playerId, durationMs = PROMPT_TIMER_MS) {
     room.timer = {
         kind: 'prompt',
         playerId,
-        expiresAt: Date.now() + PROMPT_TIMER_MS,
+        expiresAt: Date.now() + durationMs,
         warningSent: false
     };
 }
@@ -1628,12 +1639,44 @@ function clearPrompt(room) {
     room.prompt = null;
 }
 
-function summarizeAction(action) {
-    return {
+function summarizeAction(room, action) {
+    const summary = {
         kind: action.kind,
         amount: action.amount || null,
         targetPlayerId: action.targetPlayerId || null
     };
+
+    if (action.kind === 'rentSingle' || action.kind === 'rentAll') {
+        const source = getPlayer(room, action.sourcePlayerId);
+        const propertySet = source?.propertySets?.find((entry) => entry.id === action.targetSetId);
+        if (propertySet) {
+            summary.targetSetId = propertySet.id;
+            summary.targetSetColor = propertySet.color;
+            summary.targetSetLabel = COLORS[propertySet.color].label;
+        }
+    }
+
+    if (action.kind === 'dealBreaker') {
+        const target = getPlayer(room, action.targetPlayerId);
+        const propertySet = target?.propertySets?.find((entry) => entry.id === action.targetSetId);
+        if (propertySet) {
+            summary.targetSetId = propertySet.id;
+            summary.targetSetColor = propertySet.color;
+            summary.targetSetLabel = COLORS[propertySet.color].label;
+        }
+    }
+
+    if (action.kind === 'slyDeal' || action.kind === 'forcedDeal') {
+        summary.targetCardId = action.targetCardId || null;
+        summary.targetCardName = getCard(room, action.targetCardId)?.name || null;
+    }
+
+    if (action.kind === 'forcedDeal') {
+        summary.sourceCardId = action.sourceCardId || null;
+        summary.sourceCardName = getCard(room, action.sourceCardId)?.name || null;
+    }
+
+    return summary;
 }
 
 function describeAction(action) {
