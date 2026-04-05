@@ -15,8 +15,6 @@ function Room() {
   const [promptState, setPromptState] = useState(null);
   const [timerState, setTimerState] = useState(null);
   const [latestEvent, setLatestEvent] = useState(null);
-  const [transportStatus, setTransportStatus] = useState({ state: 'idle', label: '' });
-  const [commandStatus, setCommandStatus] = useState(null);
   const [error, setError] = useState('');
   const [selectedCardId, setSelectedCardId] = useState('');
   const [actionDraft, setActionDraft] = useState({});
@@ -78,19 +76,7 @@ function Room() {
     }
 
     function handleConnectError(nextError) {
-      setTransportStatus({ state: 'disconnected', label: getSocketErrorMessage(nextError) });
       setError(getSocketErrorMessage(nextError));
-    }
-
-    function handleTransportStatus(nextStatus) {
-      setTransportStatus(nextStatus || { state: 'idle', label: '' });
-    }
-
-    function handleCommandStatus(nextStatus) {
-      setCommandStatus(nextStatus || null);
-      if (nextStatus?.status === 'error' && nextStatus.message) {
-        setError(nextStatus.message);
-      }
     }
 
     socket.on('room_state', handleRoomState);
@@ -101,8 +87,6 @@ function Room() {
     socket.on('room_reconnected', handleJoinLike);
     socket.on('game_error', handleGameError);
     socket.on('connect_error', handleConnectError);
-    socket.on('transport_status', handleTransportStatus);
-    socket.on('command_status', handleCommandStatus);
 
     return () => {
       socket.off('room_state', handleRoomState);
@@ -113,8 +97,6 @@ function Room() {
       socket.off('room_reconnected', handleJoinLike);
       socket.off('game_error', handleGameError);
       socket.off('connect_error', handleConnectError);
-      socket.off('transport_status', handleTransportStatus);
-      socket.off('command_status', handleCommandStatus);
     };
   }, [normalizedRoomId, playerToken]);
 
@@ -157,18 +139,9 @@ function Room() {
       setError('This room session is not connected yet.');
       return;
     }
-    if (['queued', 'sending', 'retrying', 'processing'].includes(commandStatus?.status)) {
-      setError(
-        commandStatus.status === 'retrying'
-          ? 'Still retrying your previous move with the host. Please wait.'
-          : 'Previous move is still being processed. Please wait a moment.'
-      );
-      return;
-    }
     setError('');
     setSelectedCardId(null);
-    const clientActionId = emitGameCommand(normalizedRoomId, playerToken, type, payload);
-    setCommandStatus({ clientActionId, status: 'sending' });
+    emitGameCommand(normalizedRoomId, playerToken, type, payload);
   }
 
   function startGame() {
@@ -237,18 +210,6 @@ function Room() {
     setShowTurnCue(false);
     return undefined;
   }, [roomState?.phase, roomState?.turn?.number, roomState?.turn?.playerId, isMyTurn]);
-
-  useEffect(() => {
-    if (!commandStatus || ['queued', 'sending', 'retrying', 'processing'].includes(commandStatus.status)) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setCommandStatus((current) => (current?.clientActionId === commandStatus.clientActionId ? null : current));
-    }, commandStatus.status === 'error' ? 4000 : 1800);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [commandStatus]);
 
   useEffect(() => {
     if (!selectedCard) {
@@ -1022,8 +983,6 @@ function Room() {
               timerWarning={timerState?.warning}
               currentTurnName={currentTurnName}
               winnerName={roomState.players.find((player) => player.id === roomState.winnerId)?.name || ''}
-              transportStatus={transportStatus}
-              commandStatus={commandStatus}
               onEndTurn={() => submitCommand('end_turn', {})}
               onLeave={leaveGame}
               collapsed={sidebarCollapsed}
@@ -1036,10 +995,6 @@ function Room() {
               <div className="rounded-[1.5rem] border border-[rgba(176,37,0,0.18)] bg-[rgba(249,86,48,0.12)] px-4 py-3 text-sm font-bold text-[var(--danger)]">
                 {error}
               </div>
-            ) : null}
-
-            {roomState?.phase !== 'lobby' ? (
-              <TransportStatusBanner transportStatus={transportStatus} commandStatus={commandStatus} />
             ) : null}
 
             {!roomState ? (
@@ -1219,8 +1174,6 @@ function DesktopRoomRail({
   timerWarning,
   currentTurnName,
   winnerName,
-  transportStatus,
-  commandStatus,
   onEndTurn,
   onLeave,
   collapsed,
@@ -1286,32 +1239,6 @@ function DesktopRoomRail({
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-soft)]">Timer</span>
               <span className="text-sm font-black text-[var(--text)]">{timerValue}</span>
             </div>
-            <div className={`rounded-2xl px-3 py-2 ${
-              transportStatus?.state === 'connected' || transportStatus?.state === 'hosting'
-                ? 'bg-[rgba(193,209,255,0.24)]'
-                : transportStatus?.state === 'degraded'
-                  ? 'bg-[rgba(254,195,48,0.24)]'
-                  : 'bg-[rgba(255,118,107,0.16)]'
-            }`}>
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-soft)]">Connection</div>
-              <div className="mt-1 text-xs font-black text-[var(--text)]">
-                {transportStatus?.label || 'Waiting for host link'}
-              </div>
-            </div>
-            {commandStatus ? (
-              <div className={`rounded-2xl px-3 py-2 ${
-                commandStatus.status === 'applied'
-                  ? 'bg-[rgba(193,209,255,0.24)]'
-                  : commandStatus.status === 'error'
-                    ? 'bg-[rgba(255,118,107,0.16)]'
-                    : 'bg-[rgba(254,195,48,0.18)]'
-              }`}>
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-soft)]">Move Status</div>
-                <div className="mt-1 text-xs font-black text-[var(--text)]">
-                  {formatCommandStatus(commandStatus)}
-                </div>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </div>
@@ -1352,52 +1279,6 @@ function DesktopRoomRail({
         </button>
       </div>
     </aside>
-  );
-}
-
-function TransportStatusBanner({ transportStatus, commandStatus }) {
-  const items = [];
-
-  if (transportStatus?.label) {
-    items.push({
-      key: 'transport',
-      label: transportStatus.state === 'hosting' ? 'Host' : 'Connection',
-      value: transportStatus.label,
-      tone:
-        transportStatus.state === 'connected' || transportStatus.state === 'hosting'
-          ? 'bg-[rgba(193,209,255,0.24)] text-[var(--secondary)]'
-          : transportStatus.state === 'degraded'
-            ? 'bg-[rgba(254,195,48,0.18)] text-[var(--tertiary-deep)]'
-            : 'bg-[rgba(255,118,107,0.14)] text-[var(--primary)]',
-    });
-  }
-
-  if (commandStatus) {
-    items.push({
-      key: 'command',
-      label: 'Move',
-      value: formatCommandStatus(commandStatus),
-      tone:
-        commandStatus.status === 'applied'
-          ? 'bg-[rgba(193,209,255,0.24)] text-[var(--secondary)]'
-          : commandStatus.status === 'error'
-            ? 'bg-[rgba(255,118,107,0.14)] text-[var(--primary)]'
-            : 'bg-[rgba(254,195,48,0.18)] text-[var(--tertiary-deep)]',
-    });
-  }
-
-  if (!items.length) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2 md:hidden">
-      {items.map((item) => (
-        <div key={item.key} className={`rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] ${item.tone}`}>
-          {item.label}: {item.value}
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -3308,23 +3189,6 @@ function describePromptActionDetails(promptState) {
   }
 
   return details;
-}
-
-function formatCommandStatus(commandStatus) {
-  if (!commandStatus?.status) {
-    return '';
-  }
-
-  const labels = {
-    queued: 'Queued',
-    sending: 'Sending...',
-    retrying: 'Retrying...',
-    processing: 'Host is processing it...',
-    applied: 'Move applied',
-    error: commandStatus.message || 'Move failed',
-  };
-
-  return labels[commandStatus.status] || commandStatus.status;
 }
 
 function flattenStealableCards(player) {

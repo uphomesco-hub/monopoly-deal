@@ -31,13 +31,7 @@ class PeerSocket {
     this.awaitingJoin = false;
     this.joinTimeout = null;
     this.tickHandle = null;
-    this.heartbeatHandle = null;
     this.hostHistoryId = null;
-    this.pendingOutboundCommand = null;
-    this.outboundQueue = [];
-    this.commandAckTimeout = null;
-    this.recentCommands = new Map();
-    this.lastPongAt = 0;
     this.tearingDown = false;
     this.iceServers = [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -108,7 +102,6 @@ class PeerSocket {
       this.localPlayerToken = player.token;
       this.hostHistoryId = null;
       this.startTickLoop();
-      this.dispatchTransportStatus({ state: 'hosting', label: 'Hosting room on this browser' });
 
       this.dispatch('room_created', {
         roomId: room.id,
@@ -190,35 +183,16 @@ class PeerSocket {
 
   gameCommand(payload) {
     if (this.mode === 'host' && this.room?.id === payload.roomId) {
-      if (payload.clientActionId) {
-        this.dispatch('command_status', {
-          clientActionId: payload.clientActionId,
-          status: 'processing',
-        });
-      }
       const result = handleCommand(this.room, this.localPlayerId, payload.type, payload.payload || {});
       if (result.error) {
-        if (payload.clientActionId) {
-          this.dispatch('command_status', {
-            clientActionId: payload.clientActionId,
-            status: 'error',
-            message: result.error,
-          });
-        }
         this.dispatch('game_error', { message: result.error });
         return;
       }
       this.broadcastRoom();
-      if (payload.clientActionId) {
-        this.dispatch('command_status', {
-          clientActionId: payload.clientActionId,
-          status: 'applied',
-        });
-      }
       return;
     }
 
-    this.enqueueGuestCommand(payload);
+    this.sendToHost('game_command', payload);
   }
 
   async connectToHost(roomId, joinMessage) {
@@ -238,7 +212,6 @@ class PeerSocket {
       this.awaitingJoin = true;
       this.localPlayerId = '';
       this.currentRoomId = roomId;
-      this.dispatchTransportStatus({ state: 'connecting', label: 'Connecting to room host...' });
 
       this.peer.on('error', (error) => {
         if (this.tearingDown) {
@@ -255,7 +228,6 @@ class PeerSocket {
 
       connection.on('open', () => {
         this.clearJoinTimeout();
-        this.dispatchTransportStatus({ state: 'connecting', label: 'Joining room...' });
         this.joinTimeout = window.setTimeout(() => {
           this.dispatch('connect_error', { message: SIGNALING_ERROR_MESSAGE });
         }, 8000);
@@ -272,15 +244,12 @@ class PeerSocket {
       });
 
       connection.on('close', () => {
-        this.stopGuestHeartbeat();
-        this.dispatchTransportStatus({ state: 'disconnected', label: 'Host connection closed' });
         if (!this.tearingDown) {
           this.dispatch('connect_error', { message: HOST_LEFT_MESSAGE });
         }
       });
 
       connection.on('error', (error) => {
-        this.dispatchTransportStatus({ state: 'disconnected', label: 'Host connection failed' });
         this.dispatch('connect_error', { message: getSocketErrorMessage(error) });
       });
     } catch (error) {
@@ -347,13 +316,6 @@ class PeerSocket {
         return;
       case 'game_command':
         this.handleHostCommand(peerId, message.payload);
-        return;
-      case 'ping':
-        this.sendEventToPeer(peerId, 'transport_status', {
-          state: 'connected',
-          latencyMs: typeof message.payload?.sentAt === 'number' ? Math.max(0, Date.now() - message.payload.sentAt) : undefined,
-          label: 'Connected to host',
-        });
         return;
       default:
         this.sendEventToPeer(peerId, 'game_error', { message: 'Unknown room command.' });
@@ -437,60 +399,16 @@ class PeerSocket {
   handleHostCommand(peerId, payload) {
     const playerId = this.resolvePlayerId(peerId, payload.playerToken);
     if (!playerId) {
-      if (payload?.clientActionId) {
-        this.sendEventToPeer(peerId, 'command_status', {
-          clientActionId: payload.clientActionId,
-          status: 'error',
-          message: 'Player session not found.',
-        });
-      }
       this.sendEventToPeer(peerId, 'game_error', { message: 'Player session not found.' });
       return;
     }
 
-    const actionId = payload.clientActionId || '';
-    if (actionId) {
-      this.cleanupRecentCommands();
-      const previous = this.recentCommands.get(actionId);
-      if (previous) {
-        this.sendEventToPeer(peerId, 'command_status', previous);
-        if (previous.status === 'applied') {
-          const roomState = serializeRoomForPlayer(this.room, playerId);
-          this.sendEventToPeer(peerId, 'room_state', roomState);
-          this.sendEventToPeer(peerId, 'prompt_state', getPromptForPlayer(this.room, playerId));
-          this.sendEventToPeer(peerId, 'timer_state', getTimerState(this.room));
-        }
-        return;
-      }
-      const receivedStatus = { clientActionId: actionId, status: 'received' };
-      this.recentCommands.set(actionId, { ...receivedStatus, timestamp: Date.now() });
-      this.sendEventToPeer(peerId, 'command_status', receivedStatus);
-    }
-
     const result = handleCommand(this.room, playerId, payload.type, payload.payload || {});
     if (result.error) {
-      if (actionId) {
-        this.recentCommands.set(actionId, {
-          clientActionId: actionId,
-          status: 'error',
-          message: result.error,
-          timestamp: Date.now(),
-        });
-        this.sendEventToPeer(peerId, 'command_status', {
-          clientActionId: actionId,
-          status: 'error',
-          message: result.error,
-        });
-      }
       this.sendEventToPeer(peerId, 'game_error', { message: result.error });
       return;
     }
     this.broadcastRoom();
-    if (actionId) {
-      const appliedStatus = { clientActionId: actionId, status: 'applied', timestamp: Date.now() };
-      this.recentCommands.set(actionId, appliedStatus);
-      this.sendEventToPeer(peerId, 'command_status', appliedStatus);
-    }
   }
 
   handleGuestMessage(message) {
@@ -503,20 +421,6 @@ class PeerSocket {
       this.clearJoinTimeout();
       this.localPlayerToken = message.payload.playerToken;
       this.localPlayerId = message.payload.room?.you?.playerId || this.localPlayerId;
-      this.lastPongAt = Date.now();
-      this.startGuestHeartbeat();
-      this.dispatchTransportStatus({ state: 'connected', label: 'Connected to host' });
-    }
-
-    if (message.event === 'command_status') {
-      this.handleGuestCommandStatus(message.payload);
-      return;
-    }
-
-    if (message.event === 'transport_status') {
-      this.lastPongAt = Date.now();
-      this.dispatchTransportStatus(message.payload || { state: 'connected', label: 'Connected to host' });
-      return;
     }
 
     this.dispatch(message.event, message.payload);
@@ -569,7 +473,6 @@ class PeerSocket {
 
   sendToHost(type, payload) {
     if (!this.hostConnection?.open) {
-      this.dispatchTransportStatus({ state: 'disconnected', label: 'Host is offline' });
       this.dispatch('connect_error', { message: SIGNALING_ERROR_MESSAGE });
       return;
     }
@@ -636,7 +539,6 @@ class PeerSocket {
         return;
       }
 
-      this.cleanupRecentCommands();
       const changed = tickRoom(this.room);
       if (changed || this.room.phase === 'playing') {
         this.broadcastRoom({ emitHistory: changed });
@@ -658,159 +560,10 @@ class PeerSocket {
     }
   }
 
-  clearCommandAckTimeout() {
-    if (this.commandAckTimeout) {
-      window.clearTimeout(this.commandAckTimeout);
-      this.commandAckTimeout = null;
-    }
-  }
-
-  dispatchTransportStatus(payload) {
-    this.dispatch('transport_status', payload);
-  }
-
-  enqueueGuestCommand(payload) {
-    const entry = {
-      payload,
-      attempts: 0,
-      acked: false,
-    };
-    this.outboundQueue.push(entry);
-    this.dispatch('command_status', {
-      clientActionId: payload.clientActionId,
-      status: this.pendingOutboundCommand ? 'queued' : 'sending',
-    });
-    this.flushGuestCommandQueue();
-  }
-
-  flushGuestCommandQueue() {
-    if (this.mode !== 'guest' || this.pendingOutboundCommand || !this.outboundQueue.length) {
-      return;
-    }
-
-    const next = this.outboundQueue.shift();
-    this.pendingOutboundCommand = next;
-    this.sendGuestCommand(next, false);
-  }
-
-  sendGuestCommand(entry, isRetry) {
-    if (!this.hostConnection?.open) {
-      this.pendingOutboundCommand = null;
-      this.dispatchTransportStatus({ state: 'disconnected', label: 'Host is offline' });
-      this.dispatch('command_status', {
-        clientActionId: entry.payload.clientActionId,
-        status: 'error',
-        message: SIGNALING_ERROR_MESSAGE,
-      });
-      return;
-    }
-
-    entry.attempts += 1;
-    this.dispatch('command_status', {
-      clientActionId: entry.payload.clientActionId,
-      status: isRetry ? 'retrying' : (entry.acked ? 'processing' : 'sending'),
-      attempt: entry.attempts,
-    });
-    this.hostConnection.send({
-      kind: 'command',
-      type: 'game_command',
-      payload: entry.payload,
-    });
-
-    this.clearCommandAckTimeout();
-    this.commandAckTimeout = window.setTimeout(() => {
-      if (this.pendingOutboundCommand !== entry || entry.acked) {
-        return;
-      }
-
-      if (entry.attempts < 3) {
-        this.dispatchTransportStatus({ state: 'degraded', label: 'Waiting for host confirmation...' });
-        this.sendGuestCommand(entry, true);
-        return;
-      }
-
-      this.dispatch('command_status', {
-        clientActionId: entry.payload.clientActionId,
-        status: 'error',
-        message: 'Host did not confirm the move. Please try again.',
-      });
-      this.pendingOutboundCommand = null;
-      this.dispatchTransportStatus({ state: 'degraded', label: 'Host response is slow' });
-      this.flushGuestCommandQueue();
-    }, 2200);
-  }
-
-  handleGuestCommandStatus(payload) {
-    if (!payload?.clientActionId) {
-      this.dispatch('command_status', payload);
-      return;
-    }
-
-    const pending = this.pendingOutboundCommand;
-    if (!pending || pending.payload.clientActionId !== payload.clientActionId) {
-      this.dispatch('command_status', payload);
-      return;
-    }
-
-    if (payload.status === 'received') {
-      pending.acked = true;
-      this.clearCommandAckTimeout();
-      this.dispatchTransportStatus({ state: 'connected', label: 'Host confirmed the move' });
-      this.dispatch('command_status', {
-        clientActionId: payload.clientActionId,
-        status: 'processing',
-      });
-      return;
-    }
-
-    this.clearCommandAckTimeout();
-    this.dispatch('command_status', payload);
-    this.pendingOutboundCommand = null;
-    if (payload.status === 'applied') {
-      this.dispatchTransportStatus({ state: 'connected', label: 'Connected to host' });
-    }
-    this.flushGuestCommandQueue();
-  }
-
-  startGuestHeartbeat() {
-    if (this.mode !== 'guest') {
-      return;
-    }
-    this.stopGuestHeartbeat();
-    this.lastPongAt = Date.now();
-    this.heartbeatHandle = window.setInterval(() => {
-      if (this.mode !== 'guest') {
-        return;
-      }
-      if (Date.now() - this.lastPongAt > 12000) {
-        this.dispatchTransportStatus({ state: 'degraded', label: 'Connection to host looks unstable' });
-      }
-      this.sendToHost('ping', { sentAt: Date.now() });
-    }, 5000);
-  }
-
-  stopGuestHeartbeat() {
-    if (this.heartbeatHandle) {
-      window.clearInterval(this.heartbeatHandle);
-      this.heartbeatHandle = null;
-    }
-  }
-
-  cleanupRecentCommands() {
-    const cutoff = Date.now() - 60_000;
-    for (const [actionId, entry] of this.recentCommands.entries()) {
-      if ((entry.timestamp || 0) < cutoff) {
-        this.recentCommands.delete(actionId);
-      }
-    }
-  }
-
   async resetTransport() {
     this.tearingDown = true;
     this.clearJoinTimeout();
-    this.clearCommandAckTimeout();
     this.stopTickLoop();
-    this.stopGuestHeartbeat();
 
     for (const connection of this.connections.values()) {
       try {
@@ -843,10 +596,6 @@ class PeerSocket {
     this.awaitingJoin = false;
     this.hostHistoryId = null;
     this.currentRoomId = '';
-    this.pendingOutboundCommand = null;
-    this.outboundQueue = [];
-    this.recentCommands.clear();
-    this.lastPongAt = 0;
 
     await Promise.resolve();
     this.tearingDown = false;
@@ -928,16 +677,15 @@ class PeerSocket {
 export const socket = new PeerSocket();
 
 export function emitGameCommand(roomId, playerToken, type, payload = {}) {
-  const clientActionId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   socket.emit('game_command', {
     roomId,
     playerToken,
     type,
     payload,
-    clientActionId,
+    clientActionId: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   });
 
-  return clientActionId;
+  return true;
 }
 
 export function getSocketErrorMessage(error) {
